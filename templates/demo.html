@@ -1,0 +1,68 @@
+<template>
+    <div>
+      <Button @click="start_luyin">开始录音</Button>
+      <Button @click="end_luyin">结束录音</Button>
+      <p v-if="messge_audio">
+        文字内容是： {{messge_audio}}
+      </p>
+    </div>
+  </template>
+  <script>
+    import Recorder from 'js-audio-recorder';
+    var recorder = new Recorder({
+      sampleBits: 16,                 // 采样位数
+      sampleRate: 16000,              // 采样率
+      numChannels: 1,                 // 声道
+    });
+    export default {
+      data() {
+        return {
+          messge_audio: '',
+        }
+      },
+      //定义组建标签
+      components: {},
+      filters: {},
+      //自定义方法
+      methods: {
+        start_luyin: function () {
+          recorder.start().then(() => {
+            alert('开始录音')
+          })
+        },
+        end_luyin: function () {
+          recorder.stop()
+          var pcm_auido = recorder.getPCMBlob()
+          console.log(pcm_auido)
+          var fromdata = new FormData()
+          fromdata.append('pcm_audio', pcm_auido)
+          this.axios({
+            url: 'http://127.0.0.1:8080/baiduai/',
+            method: 'post',
+            data: fromdata
+          }).then((res) => {
+            this.messge_audio = res.data.message
+          })
+        }
+      },
+      //钩子方法
+      mounted: function () {
+        console.log('初始化');
+  
+  
+      },
+      //监听属性
+      watch: {},
+      //计算属性
+      computed: {}
+  
+  
+    }
+  
+  
+  </script>
+  
+  <style>
+  
+  </style>
+  

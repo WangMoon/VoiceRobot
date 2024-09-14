@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder</title>
+    <!-- 引入Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 50px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+        }
+        #resultCard {
+            display: none;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #resultText {
+            white-space: pre-wrap;
+        }
+        #audioPlayer {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container text-center">
+        <h1 class="mb-4">Audio Recorder</h1>
+        <div class="btn-group mb-3">
+            <button id="recordButton" class="btn btn-primary">
+                <i class="fas fa-microphone"></i> Record
+            </button>
+            <button id="stopButton" class="btn btn-danger" disabled>
+                <i class="fas fa-stop"></i> Stop
+            </button>
+        </div>
+        <!-- 输出结果框 -->
+        <div id="resultCard">
+            <h5 class="text-center">Transcription Result</h5>
+            <p id="resultText" class="text-left"></p>
+        </div>
+        <!-- 音频播放器 -->
+        <audio id="audioPlayer" controls></audio>
+    </div>
+
+    <!-- 引入Bootstrap和jQuery JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> <!-- 引入FontAwesome图标 -->
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        document.getElementById('recordButton').onclick = async () => {
+            let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.start();
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                let audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                let formData = new FormData();
+                formData.append('audio_data', audioBlob, 'recording.wav');
+
+                let response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                let result = await response.json().catch(() => ({ text: 'Error in transcription' }));
+                document.getElementById('resultText').innerText = result.text || 'Error in transcription';
+                document.getElementById('resultCard').style.display = 'block';
+
+                if (result.audio_url) {
+                    let audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.src = result.audio_url;
+                    audioPlayer.style.display = 'block';
+                }
+
+                audioChunks = [];
+            };
+
+            document.getElementById('recordButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+        };
+
+        document.getElementById('stopButton').onclick = () => {
+            mediaRecorder.stop();
+            document.getElementById('recordButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+        };
+    </script>
+</body>
+</html>
